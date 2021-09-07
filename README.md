@@ -1,7 +1,7 @@
 "# homemovie" 
-# homemovie(영화 구매 시스템) #
+# Homemovie(영화 구매 시스템) #
 # Table of contents
-- [예제 - 백신예약](#---)
+- [영화 구매 시스템 ](#---)
   - [서비스 시나리오](#서비스-시나리오)
   - [체크포인트](#체크포인트)
   - [분석/설계](#분석설계)
@@ -65,17 +65,121 @@
 
 # 구현 
 
-분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 BC별로 대변되는 마이크로 서비스들을 스프링부트와 파이선으로 구현하였다. 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 808n 이다)
+분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 8084, 8088 이다)
 
-```
+
+
+
 mvn spring-boot:run  
 
+![image](https://user-images.githubusercontent.com/86760605/132375907-04d57530-f023-455f-95f9-ccec2f84febc.png)
+
+
+
+
+
+DDD(Domain-Driven-Design)의 적용
+msaez.io 를 통해 구현한 Aggregate 단위로 Entity 를 선언 /구현을 진행하였다. 
+Entity Pattern 과 Repository Pattern을 적용하기 위해 Spring Data REST 의 RestRepository 를 적용하였다.
+
+MovieApplicaiton.java 
+
+package homemovie;
+
+import javax.persistence.*;
+import org.springframework.beans.BeanUtils;
+import java.util.List;
+import java.util.Date;
+
+@Entity
+@Table(name="MovieApplication_table")
+public class MovieApplication {
+
+    @Id
+    @GeneratedValue(strategy=GenerationType.AUTO)
+    private Long appId;
+    private String userId;
+    private String movieName;
+    private Long movieId;
+    private String status;
+
+    @PostPersist
+    public void onPostPersist(){
+       MoviePicked moviePicked = new MoviePicked();
+       BeanUtils.copyProperties(this, moviePicked);
+        //moviePicked.setStatus("Moviepicked");
+       moviePicked.publishAfterCommit();
+
+        //Following code causes dependency to external APIs
+        // it is NOT A GOOD PRACTICE. instead, Event-Policy mapping is recommended.
+
+        homemovie.external.Payment payment = new homemovie.external.Payment();
+        // mappings goes here
+    
+        payment.setAppId(moviePicked.getAppId());
+        payment.setMovieId(moviePicked.getMovieId());
+        payment.setMovieName(moviePicked.getMovieName());
+        payment.setStatus("Paid");
+        payment.setUserId(moviePicked.getUserId());      
+        AppApplication.applicationContext.getBean(homemovie.external.PaymentService.class)
+            .pay(payment);
+
+    }
+
+
+    @PostUpdate
+    public void onPostUpdate(){
+        System.out.println("\n\n##### app onPostUpdate, getStatus() : " + getStatus() + "\n\n");
+        if(getStatus().equals("MovieAppCancelled")) {
+            MovieAppCancelled movieAppCancelled = new MovieAppCancelled();
+            BeanUtils.copyProperties(this, movieAppCancelled);
+            //movieAppCancelled.setStatus("MovieAppCancelled");
+            movieAppCancelled.publishAfterCommit();
+        }
+    }
+
+    public Long getAppId() {
+        return appId;
+    }
+
+    public void setAppId(Long appId) {
+        this.appId = appId;
+    }
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+    public String getMovieName() {
+        return movieName;
+    }
+
+    public void setMovieName(String movieName) {
+        this.movieName = movieName;
+    }
+    public Long getMovieId() {
+        return movieId;
+    }
+
+    public void setMovieId(Long movieId) {
+        this.movieId = movieId;
+    }
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+}
 
 Request-Response 방식의 서비스 중심 아키텍처 구현
 
 
 CQRS
-
 
 
 
