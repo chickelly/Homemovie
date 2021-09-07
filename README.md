@@ -67,15 +67,20 @@
 
 분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 8084, 8088 이다)
 
-
-
-
 mvn spring-boot:run  
 
-![image](https://user-images.githubusercontent.com/86760605/132375907-04d57530-f023-455f-95f9-ccec2f84febc.png)
+cd app
+mvn spring-boot:run
+cd payment
+mvn spring-boot:run
+cd movie
+mvn spring-boot:run
+cd mypage
+mvn spring-boot:run
+cd gateway
+mvn spring-boot:run
 
-
-
+![image](https://user-images.githubusercontent.com/86760605/132377431-f1c7d3d1-c08f-438d-9ac1-04546a950843.png)
 
 
 DDD(Domain-Driven-Design)의 적용
@@ -173,10 +178,103 @@ public class MovieApplication {
     public void setStatus(String status) {
         this.status = status;
     }
+}
+
+
+app 서비스의 PolicyHandler.java
+
+package homemovie;
+
+import homemovie.config.kafka.KafkaProcessor;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.stream.annotation.StreamListener;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Service;
+
+@Service
+public class PolicyHandler{
+    @Autowired MovieApplicationRepository movieApplicationRepository;
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverMovieCancelled_ChangeStaus(@Payload MovieCancelled movieCancelled){
+
+        if(!movieCancelled.validate()) return;
+
+       System.out.println("\n\n##### listener ChangeStaus : " + movieCancelled.toJson() + "\n\n");
+
+    
+       // 상태 변경 - 영화취소됨 //
+        MovieApplication movieApplication = movieApplicationRepository.findByAppId(movieCancelled.getAppId());
+        movieApplication.setStatus(movieCancelled.getStatus());
+        movieApplicationRepository.save(movieApplication);          
+    }
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverMovieWatched_ChangeStaus(@Payload MovieWatched movieWatched){
+
+        if(!movieWatched.validate()) return;
+
+        System.out.println("\n\n##### listener ChangeStaus : " + movieWatched.toJson() + "\n\n");
+
+        // 상태 변경 - 영화시청함 //
+        MovieApplication movieApplication = movieApplicationRepository.findByAppId(movieWatched.getAppId());
+        movieApplication.setStatus(movieWatched.getStatus());
+        movieApplicationRepository.save(movieApplication);          
+    }
+ 
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverMovieOrdered_ChangeStaus(@Payload MovieOrdered movieOrdered){
+
+        if(!movieOrdered.validate()) return;
+
+        System.out.println("\n\n##### listener ChangeStaus : " + movieOrdered.toJson() + "\n\n");
+
+        // 상태 변경 - 영화 구매됨 //
+        MovieApplication movieApplication = movieApplicationRepository.findByAppId(movieOrdered.getAppId());
+        movieApplication.setStatus(movieOrdered.getStatus());
+        movieApplicationRepository.save(movieApplication);          
+
+    }
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void whatever(@Payload String eventString){}
 
 }
 
-Request-Response 방식의 서비스 중심 아키텍처 구현
+app 서비스의 MovieApplicationRepository.java
+
+package homemovie;
+
+import org.springframework.data.repository.PagingAndSortingRepository;
+import org.springframework.data.rest.core.annotation.RepositoryRestResource;
+
+@RepositoryRestResource(collectionResourceRel="movieApplications", path="movieApplications")
+public interface MovieApplicationRepository extends PagingAndSortingRepository<MovieApplication, Long>{
+    MovieApplication findByAppId(Long appId);
+}
+
+결과 첨부 
+
+영화가 선택
+![image](https://user-images.githubusercontent.com/86760605/132377520-28657d4b-677e-4fc2-b339-536778a6aca8.png)
+ 
+MYPAGE 에서 확인 
+ ![image](https://user-images.githubusercontent.com/86760605/132377535-6d25f00f-d79c-47a4-bee0-6d99e35c9385.png)
+
+결재 확인
+ ![image](https://user-images.githubusercontent.com/86760605/132377559-5c0a02c1-72f3-4978-9c7c-01ba188d2b8e.png)
+
+영화 시청 완료 
+ ![image](https://user-images.githubusercontent.com/86760605/132377567-5846dae8-8a17-499c-97fe-30f9c91d4077.png)
+
+영화 신청 취소 
+ ![image](https://user-images.githubusercontent.com/86760605/132377606-63875b56-bc14-4b7b-a044-25e995c64a57.png)
+
+결재 취소
+  ![image](https://user-images.githubusercontent.com/86760605/132377625-01f3bc7c-dec1-48ef-8f1d-78e12c54f2fd.png)
+
 
 
 CQRS
@@ -191,8 +289,8 @@ mypage>pom.xml
 
 ![image](https://user-images.githubusercontent.com/86760605/132375275-1f6d60d4-1229-4eb2-8d0c-5b3214093a7b.png)
 
+그외 
 ![image](https://user-images.githubusercontent.com/86760605/132375292-eb4bf12f-4910-4b71-bf48-22207f697f41.png)
-
 
 
 
@@ -205,10 +303,52 @@ mypage>pom.xml
 		</dependency>
 ..............
 
+
 ## API 게이트 웨이
 
+server:
+  port: 8088
 
+---
 
+spring:
+  profiles: default
+  cloud:
+    gateway:
+      routes:
+        - id: app
+          uri: http://localhost:8081
+          predicates:
+            - Path=/movieApplications/** 
+        - id: movie
+          uri: http://localhost:8082
+          predicates:
+            - Path=/movies/** 
+        - id: payment
+          uri: http://localhost:8083
+          predicates:
+            - Path=/payments/** 
+        - id: mypage
+          uri: http://localhost:8084
+          predicates:
+            - Path= /myPages/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+            
+Gateway 통해 영화 신청/취소 
+
+![image](https://user-images.githubusercontent.com/86760605/132378272-a6ff9ad8-56ec-4121-91a9-a734771c8903.png)
+
+![image](https://user-images.githubusercontent.com/86760605/132378258-0271d3c0-fde5-4135-bb8a-19fbc29f131a.png)
 
 
 ## 동기식 호출 과 Fallback 처리 
@@ -224,6 +364,11 @@ Hystrix를 설정: 요청처리 쓰레드에서 처리시간이 610 밀리가 �
 
 ## CQRS
 
-- Table 구조
+타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이)도 내 서비스의 영화 구매 내역 조회가 가능하게 구현해 두었다. 본 프로젝트에서 View 역할은 mypage 서비스가 수행한다.
+
+![image](https://user-images.githubusercontent.com/86760605/132378735-f67dec73-0f7b-45d8-964b-08341c2d137b.png)
+
+![image](https://user-images.githubusercontent.com/86760605/132378714-8d372eb1-3a08-4094-beb0-8f5483b2137c.png)
+
 
 
