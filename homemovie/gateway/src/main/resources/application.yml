@@ -1,0 +1,73 @@
+server:
+  port: 8088
+
+---
+
+spring:
+  profiles: default
+  cloud:
+    gateway:
+      routes:
+        - id: app
+          uri: http://localhost:8081
+          predicates:
+            - Path=/movieApplications/** 
+        - id: movie
+          uri: http://localhost:8082
+          predicates:
+            - Path=/movies/** 
+        - id: payment
+          uri: http://localhost:8083
+          predicates:
+            - Path=/payments/** 
+        - id: mypage
+          uri: http://localhost:8084
+          predicates:
+            - Path= /myPages/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+            
+---
+spring:
+  profiles: docker
+  cloud:
+    gateway:
+      routes:
+        - id: app
+          uri: http://app:8080
+          predicates:
+            - Path=/movieApplications/** 
+        - id: movie
+          uri: http://movie:8080
+          predicates:
+            - Path=/movies/** 
+        - id: payment
+          uri: http://payment:8080
+          predicates:
+            - Path=/payments/** 
+        - id: mypage
+          uri: http://mypage:8080
+          predicates:
+            - Path= /myPages/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+server:
+  port: 8080
