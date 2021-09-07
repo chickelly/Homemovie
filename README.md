@@ -89,8 +89,8 @@ Entity Pattern 과 Repository Pattern을 적용하기 위해 Spring Data REST �
 
 MovieApplicaiton.java 
 
+-----------------------------
 package homemovie;
-
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
 import java.util.List;
@@ -182,7 +182,7 @@ public class MovieApplication {
 
 
 app 서비스의 PolicyHandler.java
-
+---------------------------------
 package homemovie;
 
 import homemovie.config.kafka.KafkaProcessor;
@@ -245,6 +245,7 @@ public class PolicyHandler{
 
 app 서비스의 MovieApplicationRepository.java
 
+--------------------------------------------
 package homemovie;
 
 import org.springframework.data.repository.PagingAndSortingRepository;
@@ -277,9 +278,13 @@ MYPAGE 에서 확인
 
 
 
-CQRS
+## CQRS
 
+타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이)도 내 서비스의 영화 구매 내역 조회가 가능하게 구현해 두었다. 본 프로젝트에서 View 역할은 mypage 서비스가 수행한다.
 
+![image](https://user-images.githubusercontent.com/86760605/132378735-f67dec73-0f7b-45d8-964b-08341c2d137b.png)
+
+![image](https://user-images.githubusercontent.com/86760605/132378714-8d372eb1-3a08-4094-beb0-8f5483b2137c.png)
 
 
 
@@ -287,14 +292,7 @@ CQRS
 
 mypage>pom.xml
 
-![image](https://user-images.githubusercontent.com/86760605/132375275-1f6d60d4-1229-4eb2-8d0c-5b3214093a7b.png)
-
-그외 
-![image](https://user-images.githubusercontent.com/86760605/132375292-eb4bf12f-4910-4b71-bf48-22207f697f41.png)
-
-
-
-# pom.xml - in myPage 인스턴스
+pom.xml - in myPage 인스턴스
 
 		<dependency>
 			<groupId>org.hsqldb</groupId>
@@ -302,6 +300,11 @@ mypage>pom.xml
 			<scope>runtime</scope>
 		</dependency>
 ..............
+
+![image](https://user-images.githubusercontent.com/86760605/132375275-1f6d60d4-1229-4eb2-8d0c-5b3214093a7b.png)
+
+![image](https://user-images.githubusercontent.com/86760605/132375292-eb4bf12f-4910-4b71-bf48-22207f697f41.png)
+
 
 
 ## API 게이트 웨이
@@ -357,18 +360,118 @@ Gateway 통해 영화 신청/취소
 시나리오는 신청서비스(app) -> 결제(payment) 시의 연결을 RESTful Request/Response로 연동하여 구현이 되어있고, 결제 요청이 과도할 경우 CircuitBreaker를 통하여 장애 격리.
  
 Hystrix를 설정: 요청처리 쓰레드에서 처리시간이 610 밀리가 넘어서기 시작하여 어느정도 유지되면 CB 회로가 닫히도록 (요청을 빠르게 실패처리, 차단) 설정
+
+external>Paymentservice.java
+------------------------------------------------------- 
+package homemovie.external;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+
+import java.util.Date;
+@FeignClient(name="payment", url="http://localhost:8083")
+public interface PaymentService {
+    @RequestMapping(method= RequestMethod.POST, path="/payments")
+    public void pay(@RequestBody Payment payment);
+}
+
+
+Movieapplication.java
+----------------------------------------------------------------------
+  homemovie.external.Payment payment = new homemovie.external.Payment();
+  // mappings goes here
+    
+  payment.setAppId(moviePicked.getAppId());
+  payment.setMovieId(moviePicked.getMovieId());
+  payment.setMovieName(moviePicked.getMovieName());
+  payment.setStatus("Paid");
+  payment.setUserId(moviePicked.getUserId());      
+  AppApplication.applicationContext.getBean(homemovie.external.PaymentService.class)
+            .pay(payment);
+
+
+# 운영
+Deploy /Pipeline 
+
+git에서 소스 가져오기
+
+ : git clone https://github.com/chickelly/homemovie
+
+Build
+ : mvn package 
+
+Docker Image Build/Push, deploy/service 생성 (yml 이용)
+
+namespace 생성 
+
+ : kubectl create ns jykmovie
+
+Docker Image 생성/ Build 
+
+![image](https://user-images.githubusercontent.com/86760605/132381013-e9300bba-883d-452d-9fc1-bba6e8e57880.png)
+
+Deploy 
+![image](https://user-images.githubusercontent.com/86760605/132382013-94658f00-2fa5-4add-bfaf-d33404f9b5d9.png)
+
+
+동기식 호출 / 서킷 브레이킹 / 장애격리
+
+# application.yml
+feign:
+  hystrix:
+    enabled: true
+
+hystrix:
+  command:
+    default:
+      execution.isolation.thread.timeoutInMilliseconds: 610
+      
  
- 
+ ----------------------------------------------
+  (payment) Payment.java (Entity)
+
+    @PostPersist
+    public void onPostPersist(){  //결제이력을 저장한 후 적당한 시간 끌기
+        ...
+        
+        try {
+            Thread.currentThread().sleep((long) (400 + Math.random() * 220));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+    -----------------------------------------------------
+        
+    부하 테스터 siege 툴을 통한 서킷 브레이커 동작 확인 . 동시 사용자 100명, 60초 동안 실시
+    
+    
+    
+### 오토스케일 아웃
+앞서 CB 는 시스템을 안정되게 운영할 수 있게 해줬지만 사용자의 요청을 100% 받아들여주지 못했기 때문에 이에 대한 보완책으로 자동화된 확장 기능을 적용하고자 한다. 
 
 
 
-## CQRS
 
-타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이)도 내 서비스의 영화 구매 내역 조회가 가능하게 구현해 두었다. 본 프로젝트에서 View 역할은 mypage 서비스가 수행한다.
 
-![image](https://user-images.githubusercontent.com/86760605/132378735-f67dec73-0f7b-45d8-964b-08341c2d137b.png)
 
-![image](https://user-images.githubusercontent.com/86760605/132378714-8d372eb1-3a08-4094-beb0-8f5483b2137c.png)
+## 무정지 재배포
 
+
+
+
+
+
+
+## Config Map
+
+
+
+
+
+
+## Persistent Volume
 
 
