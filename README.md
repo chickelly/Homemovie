@@ -409,6 +409,9 @@ namespace 생성
 
  : kubectl create ns jykmovie
 
+![image](https://user-images.githubusercontent.com/86760605/132383338-0be35a04-699f-4add-bae7-aff76dc5a38d.png)
+
+
 Docker Image 생성/ Build 
 
 ![image](https://user-images.githubusercontent.com/86760605/132381013-e9300bba-883d-452d-9fc1-bba6e8e57880.png)
