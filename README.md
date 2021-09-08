@@ -20,6 +20,7 @@
 # 서비스 시나리오 
 
 [기능적 요구사항]
+
 1.	고객이 영화를 선택하여 주문한다.
 2.	고객이 결제한다.
 3.	구매가 결제되면, 신청 내역이 Movie시스템에 전달된다.
@@ -29,6 +30,7 @@
 7.	고객은 영화 신청 내역을 취소할 수 있다.
 
 [비기능적 요구사항]
+
 1.	트랜 잭션
   :	결제가 되지 않은 신청 영화는 시스템에 등록 되지 않아야 한다. (sync 호출)
 2.	장애 격리
@@ -62,6 +64,7 @@
  액터 - 고객 
  커맨드 - 영화선택, 영화 주문, 결재, 결재완료, 영화 구매 완료, 영화 취소, 영화 시청 완료 
  
+
 [시나리오 점검 후, Event Storming 최종 결과]
 
 
@@ -273,22 +276,33 @@ public interface MovieApplicationRepository extends PagingAndSortingRepository<M
 결과 첨부 
 
 영화가 선택
+
 ![image](https://user-images.githubusercontent.com/86760605/132377520-28657d4b-677e-4fc2-b339-536778a6aca8.png)
  
+
 MYPAGE 에서 확인 
- ![image](https://user-images.githubusercontent.com/86760605/132377535-6d25f00f-d79c-47a4-bee0-6d99e35c9385.png)
+
+![image](https://user-images.githubusercontent.com/86760605/132377535-6d25f00f-d79c-47a4-bee0-6d99e35c9385.png)
+
 
 결재 확인
- ![image](https://user-images.githubusercontent.com/86760605/132377559-5c0a02c1-72f3-4978-9c7c-01ba188d2b8e.png)
+
+![image](https://user-images.githubusercontent.com/86760605/132377559-5c0a02c1-72f3-4978-9c7c-01ba188d2b8e.png)
+
 
 영화 시청 완료 
- ![image](https://user-images.githubusercontent.com/86760605/132377567-5846dae8-8a17-499c-97fe-30f9c91d4077.png)
+
+![image](https://user-images.githubusercontent.com/86760605/132377567-5846dae8-8a17-499c-97fe-30f9c91d4077.png)
+
 
 영화 신청 취소 
- ![image](https://user-images.githubusercontent.com/86760605/132377606-63875b56-bc14-4b7b-a044-25e995c64a57.png)
+
+![image](https://user-images.githubusercontent.com/86760605/132377606-63875b56-bc14-4b7b-a044-25e995c64a57.png)
+
 
 결재 취소
-  ![image](https://user-images.githubusercontent.com/86760605/132377625-01f3bc7c-dec1-48ef-8f1d-78e12c54f2fd.png)
+
+![image](https://user-images.githubusercontent.com/86760605/132377625-01f3bc7c-dec1-48ef-8f1d-78e12c54f2fd.png)
 
 
 
@@ -466,6 +480,10 @@ Deploy
  
 
     ![image](https://user-images.githubusercontent.com/86760605/132442264-66301e33-e612-454e-aa1d-d31a581d3cd0.png)
+	
+	
+   운영시스템은 죽지 않고 지속적으로 CB 에 의하여 적절히 회로가 열림과 닫힘이 벌어지면서 자원을 보호하고 있음을 보여줌. 하지만 실패율이 높은 것은 고객 사용성에 있어 좋지 않기 때문에      Retry 설정과 동적 Scale out (replica의 자동적 추가,HPA) 을 통하여 시스템을 확장 해주는 후속처리가 필요.	
+		
 
 	    
 ### 오토스케일 아웃
@@ -480,22 +498,43 @@ Deploy
 ![image](https://user-images.githubusercontent.com/86760605/132442335-df75178d-ee65-4568-8d94-5c6fd437073c.png)
 
 
-운영시스템은 죽지 않고 지속적으로 CB 에 의하여 적절히 회로가 열림과 닫힘이 벌어지면서 자원을 보호하고 있음을 보여줌. 하지만 실패율이 높은 것은 고객 사용성에 있어 좋지 않기 때문에 Retry 설정과 동적 Scale out (replica의 자동적 추가,HPA) 을 통하여 시스템을 확장 해주는 후속처리가 필요.	
-	
 	
 
 ## 무정지 재배포
+.deploymen.yml	
+	
+
+readinessProbe:
+  httpGet:
+    path: '/actuator/health'
+    port: 8080
+  initialDelaySeconds: 10
+  timeoutSeconds: 2
+  periodSeconds: 5
+  failureThreshold: 10
 
 
-
-
-
-
-
+	
+	
 ## Config Map
 
+변경 가능성이 있는 설정을 ConfigMap을 사용하여 관리
+
+app 서비스에서 바라보는 payment 서비스 url을 ConfigMap 사용하여 구현​
+
+in app src (app/src/main/java/edu/external/PaymentService.java)
+	
+![image](https://user-images.githubusercontent.com/86760605/132453572-da8e8896-1d40-46bf-bb2d-76b449a57168.png)
 
 
+app application.yml (app/src/main/resources/application.yml)​
+
+![image](https://user-images.githubusercontent.com/86760605/132453392-2039aa12-abc4-4ff4-8930-8f6b3d2c65bc.png)
+
+	
+app deploy yml (app/kubernetes/deployment.yml)
+
+![image](https://user-images.githubusercontent.com/86760605/132453864-749880b0-d77b-45c3-9b92-3fcca126102e.png)
 
 
 
@@ -503,4 +542,5 @@ Deploy
 
 kubectl apply -f volume-pvc.yml -n jykmovie
 
+![image](https://user-images.githubusercontent.com/86760605/132453315-c8599b5d-2cb4-418a-bccf-adec7845afed.png)
 	
