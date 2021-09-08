@@ -41,21 +41,37 @@
 # 분석/설계 
 
 [이벤트 스토밍]
+ 이벤트 도출
+ 
+ 1) 영화 선택 
+ 2) 영화 구매
+ 3) 영화 결재 선택 
+ 4) 영화에약시스템에 전달됨
+ 5) 영화시청 완료
+ 6) 영화 구매 취소
+ 
 
+[서브 도메인 , 바운디드 컨텍스트 분리] - 중복되거가 오류도메인 필터링 작업 수행 / Ubiquitous Language
 
-
-[서브 도메인 , 바운디드 컨텍스트 분리] 
-
+ 1) 결재 버튼 클릭 -- 제거 
+ 2) 영화에약 시스템에 전달됨 -- 제거 
 
 
 [컨텍스트 매핑/이벤트 드리븐 아키텍쳐]
+ 
+ 액터 - 고객 
+ 커맨드 - 영화선택, 영화 주문, 결재, 결재완료, 영화 구매 완료, 영화 취소, 영화 시청 완료 
+ 
+[시나리오 점검 후, Event Storming 최종 결과]
 
 
 ![image](https://user-images.githubusercontent.com/86760605/132372530-4da7a718-0b07-4980-877f-4644c7bed35a.png)
 
-    -
 
-헥사고날 아키텍처 다이어그램 도출
+
+[헥사고날 아키텍처 다이어그램 도출]
+
+![image](https://user-images.githubusercontent.com/86760605/132451480-2a565a4c-1584-44b0-800f-51867c46d9b3.png)
 
 
   - Chris Richardson, MSA Patterns 참고하여 Inbound adaptor와 Outbound adaptor를 구분함
@@ -83,7 +99,7 @@ mvn spring-boot:run
 ![image](https://user-images.githubusercontent.com/86760605/132377431-f1c7d3d1-c08f-438d-9ac1-04546a950843.png)
 
 
-DDD(Domain-Driven-Design)의 적용
+[ DDD(Domain-Driven-Design)의 적용 ]
 msaez.io 를 통해 구현한 Aggregate 단위로 Entity 를 선언 /구현을 진행하였다. 
 Entity Pattern 과 Repository Pattern을 적용하기 위해 Spring Data REST 의 RestRepository 를 적용하였다.
 
@@ -278,7 +294,8 @@ MYPAGE 에서 확인
 
 ## CQRS
 
-타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이)도 내 서비스의 영화 구매 내역 조회가 가능하게 구현해 두었다. 본 프로젝트에서 View 역할은 mypage 서비스가 수행한다.
+타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이)도 내 서비스의 영화 구매 내역 조회가 가능하게 구현해 두었다. (view)
+
 
 ![image](https://user-images.githubusercontent.com/86760605/132378735-f67dec73-0f7b-45d8-964b-08341c2d137b.png)
 
@@ -287,6 +304,9 @@ MYPAGE 에서 확인
 
 
 ## 폴리글랏 프로그래밍 
+
+
+mypage 서비스에서 타 서비스들과 다른 DB를 사용하여 MSA간 서로 다른 종류의 DB간에도 문제 없이 동작하여 다형성을 만족하는지 확인하였다. (폴리글랏을 만족)
 
 <mypage>pom.xml> 
 
@@ -304,8 +324,7 @@ pom.xml - in myPage 인스턴스
 ![image](https://user-images.githubusercontent.com/86760605/132375292-eb4bf12f-4910-4b71-bf48-22207f697f41.png)
 
 
-
-## API 게이트 웨이
+## Gateway 
 
 server:
   port: 8088
@@ -420,14 +439,15 @@ Deploy
 
 동기식 호출 / 서킷 브레이킹 / 장애격리
 
-# application.yml
+ < application.yml >
+	 
 	feign hsytrix 사용
 
 	![image](https://user-images.githubusercontent.com/86760605/132442189-d44171c1-063e-4597-9c21-db854545ff80.png)
 	
 	
 	
-	< (payment) Payment.java (Entity)> 
+< (payment) Payment.java (Entity)> 
 
     @PostPersist
     public void onPostPersist(){  //결제이력을 저장한 후 적당한 시간 끌기
@@ -439,26 +459,30 @@ Deploy
             e.printStackTrace();
         }
     }
-    -----------------------------------------------------
         
     부하 테스터 siege 툴을 통한 서킷 브레이커 동작 확인 . 동시 사용자 100명, 60초 동안 실시
 		
     ![image](https://user-images.githubusercontent.com/86760605/132442239-d7fb09ba-396c-4e63-9296-bc618c3b83d9.png) 
  
-	 
+
     ![image](https://user-images.githubusercontent.com/86760605/132442264-66301e33-e612-454e-aa1d-d31a581d3cd0.png)
 
-	
-    
+	    
 ### 오토스케일 아웃
+
 앞서 CB 는 시스템을 안정되게 운영할 수 있게 해줬지만 사용자의 요청을 100% 받아들여주지 못했기 때문에 이에 대한 보완책으로 자동화된 확장 기능을 적용하고자 한다. 
+	
 
 ![image](https://user-images.githubusercontent.com/86760605/132442327-8241196e-a092-475e-9336-0cf1e5fa42e0.png)
 
+	
 
 ![image](https://user-images.githubusercontent.com/86760605/132442335-df75178d-ee65-4568-8d94-5c6fd437073c.png)
 
 
+운영시스템은 죽지 않고 지속적으로 CB 에 의하여 적절히 회로가 열림과 닫힘이 벌어지면서 자원을 보호하고 있음을 보여줌. 하지만 실패율이 높은 것은 고객 사용성에 있어 좋지 않기 때문에 Retry 설정과 동적 Scale out (replica의 자동적 추가,HPA) 을 통하여 시스템을 확장 해주는 후속처리가 필요.	
+	
+	
 
 ## 무정지 재배포
 
@@ -477,4 +501,6 @@ Deploy
 
 ## Persistent Volume
 
+kubectl apply -f volume-pvc.yml -n jykmovie
 
+	
