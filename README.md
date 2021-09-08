@@ -87,9 +87,8 @@ DDD(Domain-Driven-Design)의 적용
 msaez.io 를 통해 구현한 Aggregate 단위로 Entity 를 선언 /구현을 진행하였다. 
 Entity Pattern 과 Repository Pattern을 적용하기 위해 Spring Data REST 의 RestRepository 를 적용하였다.
 
-MovieApplicaiton.java 
+< MovieApplicaiton.java >  
 
------------------------------
 package homemovie;
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
@@ -181,8 +180,8 @@ public class MovieApplication {
 }
 
 
-app 서비스의 PolicyHandler.java
----------------------------------
+< app 서비스의 PolicyHandler.java > 
+
 package homemovie;
 
 import homemovie.config.kafka.KafkaProcessor;
@@ -243,9 +242,8 @@ public class PolicyHandler{
 
 }
 
-app 서비스의 MovieApplicationRepository.java
+< app 서비스의 MovieApplicationRepository.java >
 
---------------------------------------------
 package homemovie;
 
 import org.springframework.data.repository.PagingAndSortingRepository;
@@ -290,7 +288,7 @@ MYPAGE 에서 확인
 
 ## 폴리글랏 프로그래밍 
 
-mypage>pom.xml
+<mypage>pom.xml> 
 
 pom.xml - in myPage 인스턴스
 
@@ -361,8 +359,8 @@ Gateway 통해 영화 신청/취소
  
 Hystrix를 설정: 요청처리 쓰레드에서 처리시간이 610 밀리가 넘어서기 시작하여 어느정도 유지되면 CB 회로가 닫히도록 (요청을 빠르게 실패처리, 차단) 설정
 
-external>Paymentservice.java
-------------------------------------------------------- 
+< external>Paymentservice.java >
+
 package homemovie.external;
 
 import org.springframework.cloud.openfeign.FeignClient;
@@ -379,8 +377,8 @@ public interface PaymentService {
 }
 
 
-Movieapplication.java
-----------------------------------------------------------------------
+< Movieapplication.java > 
+
   homemovie.external.Payment payment = new homemovie.external.Payment();
   // mappings goes here
     
@@ -423,18 +421,13 @@ Deploy
 동기식 호출 / 서킷 브레이킹 / 장애격리
 
 # application.yml
-feign:
-  hystrix:
-    enabled: true
+	feign hsytrix 사용
 
-hystrix:
-  command:
-    default:
-      execution.isolation.thread.timeoutInMilliseconds: 610
-      
- 
- ----------------------------------------------
-  (payment) Payment.java (Entity)
+	![image](https://user-images.githubusercontent.com/86760605/132442189-d44171c1-063e-4597-9c21-db854545ff80.png)
+	
+	
+	
+	< (payment) Payment.java (Entity)> 
 
     @PostPersist
     public void onPostPersist(){  //결제이력을 저장한 후 적당한 시간 끌기
@@ -449,14 +442,21 @@ hystrix:
     -----------------------------------------------------
         
     부하 테스터 siege 툴을 통한 서킷 브레이커 동작 확인 . 동시 사용자 100명, 60초 동안 실시
-    
-    
+		
+    ![image](https://user-images.githubusercontent.com/86760605/132442239-d7fb09ba-396c-4e63-9296-bc618c3b83d9.png) 
+ 
+	 
+    ![image](https://user-images.githubusercontent.com/86760605/132442264-66301e33-e612-454e-aa1d-d31a581d3cd0.png)
+
+	
     
 ### 오토스케일 아웃
 앞서 CB 는 시스템을 안정되게 운영할 수 있게 해줬지만 사용자의 요청을 100% 받아들여주지 못했기 때문에 이에 대한 보완책으로 자동화된 확장 기능을 적용하고자 한다. 
 
+![image](https://user-images.githubusercontent.com/86760605/132442327-8241196e-a092-475e-9336-0cf1e5fa42e0.png)
 
 
+![image](https://user-images.githubusercontent.com/86760605/132442335-df75178d-ee65-4568-8d94-5c6fd437073c.png)
 
 
 
