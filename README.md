@@ -17,6 +17,7 @@
     - [오토스케일 아웃](#오토스케일-아웃)
     - [무정지 재배포](#무정지-재배포)
 
+
 # 서비스 시나리오 
 
 [기능적 요구사항]
@@ -28,6 +29,7 @@
 5.	고객이 영화를 시청한다.
 6.	고객은 신청 내역을 조회할 수 있다.
 7.	고객은 영화 신청 내역을 취소할 수 있다.
+
 
 [비기능적 요구사항]
 
@@ -43,7 +45,8 @@
 # 분석/설계 
 
 [이벤트 스토밍]
- 이벤트 도출
+
+이벤트 도출
  
  1) 영화 선택 
  2) 영화 구매
@@ -98,6 +101,7 @@ cd mypage
 mvn spring-boot:run
 cd gateway
 mvn spring-boot:run
+
 
 ![image](https://user-images.githubusercontent.com/86760605/132377431-f1c7d3d1-c08f-438d-9ac1-04546a950843.png)
 
@@ -273,7 +277,8 @@ public interface MovieApplicationRepository extends PagingAndSortingRepository<M
     MovieApplication findByAppId(Long appId);
 }
 
-결과 첨부 
+
+<< 결과 첨부 >>
 
 영화가 선택
 
@@ -313,6 +318,7 @@ MYPAGE 에서 확인
 
 ![image](https://user-images.githubusercontent.com/86760605/132378735-f67dec73-0f7b-45d8-964b-08341c2d137b.png)
 
+
 ![image](https://user-images.githubusercontent.com/86760605/132378714-8d372eb1-3a08-4094-beb0-8f5483b2137c.png)
 
 
@@ -331,9 +337,11 @@ pom.xml - in myPage 인스턴스
 			<artifactId>hsqldb</artifactId>
 			<scope>runtime</scope>
 		</dependency>
-..............
+
+	
 
 ![image](https://user-images.githubusercontent.com/86760605/132375275-1f6d60d4-1229-4eb2-8d0c-5b3214093a7b.png)
+	
 
 ![image](https://user-images.githubusercontent.com/86760605/132375292-eb4bf12f-4910-4b71-bf48-22207f697f41.png)
 
@@ -474,12 +482,13 @@ Deploy
         }
     }
         
-    부하 테스터 siege 툴을 통한 서킷 브레이커 동작 확인 . 동시 사용자 100명, 60초 동안 실시
-		
-    ![image](https://user-images.githubusercontent.com/86760605/132442239-d7fb09ba-396c-4e63-9296-bc618c3b83d9.png) 
+   부하 테스터 siege 툴을 통한 서킷 브레이커 동작 확인 . 동시 사용자 100명, 60초 동안 실시
+
+	
+   ![image](https://user-images.githubusercontent.com/86760605/132442239-d7fb09ba-396c-4e63-9296-bc618c3b83d9.png) 
  
 
-    ![image](https://user-images.githubusercontent.com/86760605/132442264-66301e33-e612-454e-aa1d-d31a581d3cd0.png)
+   ![image](https://user-images.githubusercontent.com/86760605/132442264-66301e33-e612-454e-aa1d-d31a581d3cd0.png)
 	
 	
    운영시스템은 죽지 않고 지속적으로 CB 에 의하여 적절히 회로가 열림과 닫힘이 벌어지면서 자원을 보호하고 있음을 보여줌. 하지만 실패율이 높은 것은 고객 사용성에 있어 좋지 않기 때문에      Retry 설정과 동적 Scale out (replica의 자동적 추가,HPA) 을 통하여 시스템을 확장 해주는 후속처리가 필요.	
@@ -496,13 +505,14 @@ Deploy
 	
 
 ![image](https://user-images.githubusercontent.com/86760605/132442335-df75178d-ee65-4568-8d94-5c6fd437073c.png)
-
-
 	
+
+
+
 
 ## 무정지 재배포
 .deploymen.yml	
-	
+
 
 readinessProbe:
   httpGet:
@@ -514,7 +524,7 @@ readinessProbe:
   failureThreshold: 10
 
 
-	
+
 	
 ## Config Map
 
@@ -536,7 +546,9 @@ app deploy yml (app/kubernetes/deployment.yml)
 
 ![image](https://user-images.githubusercontent.com/86760605/132453864-749880b0-d77b-45c3-9b92-3fcca126102e.png)
 
-
+kubectl create configmap paymenturl --from-literal=url=http://payment:8080 -n jykmovie
+kubectl get configmap paymenturl -o yaml -n jykmovie 
+	
 
 ## Persistent Volume
 
